@@ -1,0 +1,30 @@
+name: Deploy to EC2
+
+# This specifies the event that triggers the workflow.
+on:
+  push:
+    branches:
+      - main  # The workflow will run on pushes to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # The runner environment for this job
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3  # This checks out your code from the GitHub repository
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh  # Create the SSH directory
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa  # Save private key from GitHub Secrets
+          chmod 600 ~/.ssh/id_rsa  # Secure the private key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts  # Add EC2 host to known hosts
+
+      - name: Deploy via SSH
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd ~/app1  # Change to the project directory
+            git pull origin main  # Pull the latest changes from the main branch
+            pm2 restart app1  # Restart the app via PM2
+          EOF
